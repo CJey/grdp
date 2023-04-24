@@ -504,3 +504,8 @@ func (c *MCSClient) Write(data []byte) (n int, err error) {
 	core.WriteBytes(data, buff)
 	return c.transport.Write(buff.Bytes())
 }
+
+func (c *MCSClient) SetClientDesktop(width, height uint16) {
+	c.clientCoreData.DesktopWidth = width
+	c.clientCoreData.DesktopHeight = height
+}

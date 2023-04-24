@@ -3,6 +3,7 @@ package nla
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"os"
 
 	"github.com/lunixbochs/struc"
@@ -367,6 +368,7 @@ func (n *NTLMv2) GetAuthenticateMessage(s []byte) *AuthenticateMessage {
 	//
 	//fmt.Println("Payload", string(challengeMsg.Payload[:]))
 
+	fmt.Printf("why?????\n")
 	os.Exit(0)
 
 	//
