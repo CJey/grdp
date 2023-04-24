@@ -41,7 +41,7 @@ func Debug(v ...interface{}) {
 		mu.Lock()
 		defer mu.Unlock()
 		logger.SetPrefix("[DEBUG]")
-		logger.Print(v)
+		logger.Print(v...)
 	}
 }
 
@@ -51,7 +51,7 @@ func Info(v ...interface{}) {
 		mu.Lock()
 		defer mu.Unlock()
 		logger.SetPrefix("[INFO]")
-		logger.Print(v)
+		logger.Print(v...)
 	}
 }
 
@@ -61,7 +61,7 @@ func Warn(v ...interface{}) {
 		mu.Lock()
 		defer mu.Unlock()
 		logger.SetPrefix("[WARN]")
-		logger.Print(v)
+		logger.Print(v...)
 	}
 }
 
@@ -71,6 +71,6 @@ func Error(v ...interface{}) {
 		mu.Lock()
 		defer mu.Unlock()
 		logger.SetPrefix("[ERROR]")
-		logger.Print(v)
+		logger.Print(v...)
 	}
 }

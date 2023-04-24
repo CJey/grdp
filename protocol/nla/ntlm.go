@@ -255,7 +255,7 @@ func (n *NTLMv2) GetNegotiateMessage() *NegotiateMessage {
 	return n.negotiateMessage
 }
 
-//  process NTLMv2 Authenticate hash
+// process NTLMv2 Authenticate hash
 func (n *NTLMv2) ComputeResponse(respKeyNT, respKeyLM, serverChallenge, clientChallenge,
 	timestamp, serverName []byte) (ntChallResp, lmChallResp, SessBaseKey []byte) {
 
