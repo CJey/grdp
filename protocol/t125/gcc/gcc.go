@@ -2,6 +2,9 @@ package gcc
 
 import (
 	"bytes"
+	"errors"
+	"io"
+	"os"
 
 	"github.com/lunixbochs/struc"
 
@@ -216,8 +219,8 @@ const (
 )
 
 type ChannelDef struct {
-	Name    [8]byte
-	Options uint32
+	Name    string `struc:"little"`
+	Options uint32 `struc:"little"`
 }
 
 type ClientCoreData struct {
@@ -246,15 +249,18 @@ type ClientCoreData struct {
 }
 
 func NewClientCoreData() *ClientCoreData {
+	name, _ := os.Hostname()
+	var ClientName [32]byte
+	copy(ClientName[:], core.UnicodeEncode(name)[:])
 	return &ClientCoreData{
 		RDP_VERSION_5_PLUS, 1280, 800, RNS_UD_COLOR_8BPP,
-		RNS_UD_SAS_DEL, US, 3790, [32]byte{'m', 's', 't', 's', 'c'}, KT_IBM_101_102_KEYS,
+		RNS_UD_SAS_DEL, US, 3790, ClientName, KT_IBM_101_102_KEYS,
 		0, 12, [64]byte{}, RNS_UD_COLOR_8BPP, 1, 0, HIGH_COLOR_24BPP,
 		RNS_UD_15BPP_SUPPORT | RNS_UD_16BPP_SUPPORT | RNS_UD_24BPP_SUPPORT | RNS_UD_32BPP_SUPPORT,
 		RNS_UD_CS_SUPPORT_ERRINFO_PDU, [64]byte{}, 0, 0, 0}
 }
 
-func (data *ClientCoreData) Block() []byte {
+func (data *ClientCoreData) Pack() []byte {
 	buff := &bytes.Buffer{}
 	core.WriteUInt16LE(CS_CORE, buff) // 01C0
 	core.WriteUInt16LE(0xd8, buff)    // d800
@@ -268,14 +274,44 @@ type ClientNetworkData struct {
 }
 
 func NewClientNetworkData() *ClientNetworkData {
-	return &ClientNetworkData{}
+	n := &ClientNetworkData{ChannelDefArray: make([]ChannelDef, 0, 100)}
+
+	/*var d1 ChannelDef
+	d1.Name = plugin.RDPDR_SVC_CHANNEL_NAME
+	d1.Options = uint32(CHANNEL_OPTION_INITIALIZED | CHANNEL_OPTION_ENCRYPT_RDP |
+		CHANNEL_OPTION_COMPRESS_RDP)
+	n.ChannelDefArray = append(n.ChannelDefArray, d1)
+
+	var d2 ChannelDef
+	d2.Name = plugin.RDPSND_SVC_CHANNEL_NAME
+	d2.Options = uint32(CHANNEL_OPTION_INITIALIZED | CHANNEL_OPTION_ENCRYPT_RDP |
+		CHANNEL_OPTION_COMPRESS_RDP | CHANNEL_OPTION_SHOW_PROTOCOL)
+	n.ChannelDefArray = append(n.ChannelDefArray, d2)*/
+
+	return n
 }
 
-func (d *ClientNetworkData) Block() []byte {
+func (n *ClientNetworkData) AddVirtualChannel(name string, option uint32) {
+	var d ChannelDef
+	d.Name = name
+	d.Options = option
+	n.ChannelDefArray = append(n.ChannelDefArray, d)
+	n.ChannelCount++
+}
+
+func (n *ClientNetworkData) Pack() []byte {
 	buff := &bytes.Buffer{}
 	core.WriteUInt16LE(CS_NET, buff) // type
-	core.WriteUInt16LE(0x08, buff)   // len 8
-	buff.Write([]byte{0, 0, 0, 0})   // data
+	length := uint16(n.ChannelCount*12 + 8)
+	core.WriteUInt16LE(length, buff) // len 8
+	core.WriteUInt32LE(n.ChannelCount, buff)
+	for i := 0; i < int(n.ChannelCount); i++ {
+		v := n.ChannelDefArray[i]
+		name := make([]byte, 8)
+		copy(name, []byte(v.Name))
+		core.WriteBytes(name[:], buff)
+		core.WriteUInt32LE(v.Options, buff)
+	}
 	return buff.Bytes()
 }
 
@@ -290,7 +326,7 @@ func NewClientSecurityData() *ClientSecurityData {
 		00}
 }
 
-func (d *ClientSecurityData) Block() []byte {
+func (d *ClientSecurityData) Pack() []byte {
 	buff := &bytes.Buffer{}
 	core.WriteUInt16LE(CS_SECURITY, buff) // type
 	core.WriteUInt16LE(0x0c, buff)        // len 12
@@ -299,39 +335,196 @@ func (d *ClientSecurityData) Block() []byte {
 	return buff.Bytes()
 }
 
+type RSAPublicKey struct {
+	Magic   uint32 `struc:"little"` //0x31415352
+	Keylen  uint32 `struc:"little,sizeof=Modulus"`
+	Bitlen  uint32 `struc:"little"`
+	Datalen uint32 `struc:"little"`
+	PubExp  uint32 `struc:"little"`
+	Modulus []byte `struc:"little"`
+	Padding []byte `struc:"[8]byte"`
+}
+
+type ProprietaryServerCertificate struct {
+	DwSigAlgId        uint32       `struc:"little"` //0x00000001
+	DwKeyAlgId        uint32       `struc:"little"` //0x00000001
+	PublicKeyBlobType uint16       `struc:"little"` //0x0006
+	PublicKeyBlobLen  uint16       `struc:"little,sizeof=PublicKeyBlob"`
+	PublicKeyBlob     RSAPublicKey `struc:"little"`
+	SignatureBlobType uint16       `struc:"little"` //0x0008
+	SignatureBlobLen  uint16       `struc:"little,sizeof=SignatureBlob"`
+	SignatureBlob     []byte       `struc:"little"`
+	//PaddingLen        uint16       `struc:"little,sizeof=Padding,skip"`
+	Padding []byte `struc:"[8]byte"`
+}
+
+func (p *ProprietaryServerCertificate) GetPublicKey() (uint32, []byte) {
+	return p.PublicKeyBlob.PubExp, p.PublicKeyBlob.Modulus
+}
+func (p *ProprietaryServerCertificate) Verify() bool {
+	//todo
+	return true
+}
+func (p *ProprietaryServerCertificate) Encrypt() []byte {
+	//todo
+	return nil
+}
+func (p *ProprietaryServerCertificate) Unpack(r io.Reader) error {
+	p.DwSigAlgId, _ = core.ReadUInt32LE(r)
+	p.DwKeyAlgId, _ = core.ReadUInt32LE(r)
+	p.PublicKeyBlobType, _ = core.ReadUint16LE(r)
+	p.PublicKeyBlobLen, _ = core.ReadUint16LE(r)
+	var b RSAPublicKey
+	b.Magic, _ = core.ReadUInt32LE(r)
+	b.Keylen, _ = core.ReadUInt32LE(r)
+	b.Bitlen, _ = core.ReadUInt32LE(r)
+	b.Datalen, _ = core.ReadUInt32LE(r)
+	b.PubExp, _ = core.ReadUInt32LE(r)
+	b.Modulus, _ = core.ReadBytes(int(b.Keylen)-8, r)
+	b.Padding, _ = core.ReadBytes(8, r)
+	p.PublicKeyBlob = b
+	p.SignatureBlobType, _ = core.ReadUint16LE(r)
+	p.SignatureBlobLen, _ = core.ReadUint16LE(r)
+	p.SignatureBlob, _ = core.ReadBytes(int(p.SignatureBlobLen)-8, r)
+	p.Padding, _ = core.ReadBytes(8, r)
+
+	return nil
+}
+
+type CertBlob struct {
+	CbCert uint32 `struc:"little,sizeof=AbCert"`
+	AbCert []byte `struc:"little"`
+}
+type X509CertificateChain struct {
+	NumCertBlobs  uint32     `struc:"little,sizeof=CertBlobArray"`
+	CertBlobArray []CertBlob `struc:"little"`
+	Padding       []byte     `struc:"[12]byte"`
+}
+
+func (p *X509CertificateChain) GetPublicKey() (uint32, []byte) {
+	//todo
+	return 0, nil
+}
+func (p *X509CertificateChain) Verify() bool {
+	return true
+}
+func (p *X509CertificateChain) Encrypt() []byte {
+
+	//todo
+	return nil
+}
+func (p *X509CertificateChain) Unpack(r io.Reader) error {
+	return struc.Unpack(r, p)
+}
+
 type ServerCoreData struct {
-	RdpVersion              VERSION
-	ClientRequestedProtocol uint32 //optional
-	EarlyCapabilityFlags    uint32 //optional
-	raw                     []byte
+	RdpVersion              VERSION `struc:"uint32,little"`
+	ClientRequestedProtocol uint32  `struc:"little"`
+	EarlyCapabilityFlags    uint32  `struc:"little"`
 }
 
 func NewServerCoreData() *ServerCoreData {
 	return &ServerCoreData{
-		RDP_VERSION_5_PLUS, 0, 0, []byte{}}
+		RDP_VERSION_5_PLUS, 0, 0}
 }
 
 func (d *ServerCoreData) Serialize() []byte {
 	return []byte{}
 }
 
+func (d *ServerCoreData) ScType() Message {
+	return SC_CORE
+}
+func (d *ServerCoreData) Unpack(r io.Reader) error {
+	return struc.Unpack(r, d)
+}
+
 type ServerNetworkData struct {
-	ChannelIdArray []uint16
+	MCSChannelId   uint16   `struc:"little"`
+	ChannelCount   uint16   `struc:"little,sizeof=ChannelIdArray"`
+	ChannelIdArray []uint16 `struc:"little"`
 }
 
 func NewServerNetworkData() *ServerNetworkData {
 	return &ServerNetworkData{}
 }
+func (d *ServerNetworkData) ScType() Message {
+	return SC_NET
+}
+func (d *ServerNetworkData) Unpack(r io.Reader) error {
+	return struc.Unpack(r, d)
+}
+
+type CertData interface {
+	GetPublicKey() (uint32, []byte)
+	Verify() bool
+	Unpack(io.Reader) error
+}
+type ServerCertificate struct {
+	DwVersion uint32
+	CertData  CertData
+}
+
+func (sc *ServerCertificate) Unpack(r io.Reader) error {
+	sc.DwVersion, _ = core.ReadUInt32LE(r)
+	var cd CertData
+	switch CertificateType(sc.DwVersion & 0x7fffffff) {
+	case CERT_CHAIN_VERSION_1:
+		glog.Debug("ProprietaryServerCertificate")
+		cd = &ProprietaryServerCertificate{}
+	case CERT_CHAIN_VERSION_2:
+		glog.Debug("X509CertificateChain")
+		cd = &X509CertificateChain{}
+	default:
+		glog.Error("Unsupported version:", sc.DwVersion&0x7fffffff)
+		return errors.New("Unsupported version")
+	}
+	if cd != nil {
+		err := cd.Unpack(r)
+		if err != nil {
+			glog.Error("Unpack:", err)
+			return err
+		}
+	}
+	sc.CertData = cd
+
+	return nil
+}
 
 type ServerSecurityData struct {
-	EncryptionMethod uint32
-	EncryptionLevel  uint32
-	raw              []byte
+	EncryptionMethod  uint32 `struc:"little"`
+	EncryptionLevel   uint32 `struc:"little"`
+	ServerRandomLen   uint32 //0x00000020
+	ServerCertLen     uint32
+	ServerRandom      []byte
+	ServerCertificate ServerCertificate
 }
 
 func NewServerSecurityData() *ServerSecurityData {
 	return &ServerSecurityData{
-		0, 0, []byte{}}
+		0, 0, 0x00000020, 0, []byte{}, ServerCertificate{}}
+}
+func (d *ServerSecurityData) ScType() Message {
+	return SC_SECURITY
+}
+func (s *ServerSecurityData) Unpack(r io.Reader) error {
+	s.EncryptionMethod, _ = core.ReadUInt32LE(r)
+	s.EncryptionLevel, _ = core.ReadUInt32LE(r)
+	if !(s.EncryptionMethod == 0 && s.EncryptionLevel == 0) {
+		s.ServerRandomLen, _ = core.ReadUInt32LE(r)
+		s.ServerCertLen, _ = core.ReadUInt32LE(r)
+		s.ServerRandom, _ = core.ReadBytes(int(s.ServerRandomLen), r)
+		var sc ServerCertificate
+		data, _ := core.ReadBytes(int(s.ServerCertLen), r)
+		rd := bytes.NewReader(data)
+		err := sc.Unpack(rd)
+		if err != nil {
+			return err
+		}
+		s.ServerCertificate = sc
+	}
+
+	return nil
 }
 
 func MakeConferenceCreateRequest(userData []byte) []byte {
@@ -350,9 +543,60 @@ func MakeConferenceCreateRequest(userData []byte) []byte {
 	return buff.Bytes()
 }
 
+type ScData interface {
+	ScType() Message
+	Unpack(io.Reader) error
+}
+
 func ReadConferenceCreateResponse(data []byte) []interface{} {
-	// todo
-	glog.Debug("ReadConferenceCreateResponse todo")
-	ret := make([]interface{}, 0)
+	ret := make([]interface{}, 0, 3)
+
+	r := bytes.NewReader(data)
+	per.ReadChoice(r)
+	if !per.ReadObjectIdentifier(r, t124_02_98_oid) {
+		glog.Error("NODE_RDP_PROTOCOL_T125_GCC_BAD_OBJECT_IDENTIFIER_T124")
+		return ret
+	}
+	per.ReadLength(r)
+	per.ReadChoice(r)
+	per.ReadInteger16(r)
+	per.ReadInteger(r)
+	per.ReadEnumerates(r)
+	per.ReadNumberOfSet(r)
+	per.ReadChoice(r)
+
+	if !per.ReadOctetStream(r, h221_sc_key, 4) {
+		glog.Error("NODE_RDP_PROTOCOL_T125_GCC_BAD_H221_SC_KEY")
+		return ret
+	}
+
+	ln, _ := per.ReadLength(r)
+	for ln > 0 {
+		t, _ := core.ReadUint16LE(r)
+		l, _ := core.ReadUint16LE(r)
+		dataBytes, _ := core.ReadBytes(int(l)-4, r)
+		ln = ln - l
+		var d ScData
+		switch Message(t) {
+		case SC_CORE:
+			d = &ServerCoreData{}
+		case SC_SECURITY:
+			d = &ServerSecurityData{}
+		case SC_NET:
+			d = &ServerNetworkData{}
+		default:
+			glog.Error("Unknown type", t)
+			continue
+		}
+		if d != nil {
+			r := bytes.NewReader(dataBytes)
+			err := d.Unpack(r)
+			if err != nil {
+				glog.Warn("Unpack:", err)
+			}
+			ret = append(ret, d)
+		}
+	}
+
 	return ret
 }

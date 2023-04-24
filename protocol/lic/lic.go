@@ -38,6 +38,27 @@ const (
 	ST_RESEND_LAST_MESSAGE  = 0x00000004
 )
 
+/*
+"""
+@summary: Binary blob data type
+@see: http://msdn.microsoft.com/en-us/library/cc240481.aspx
+"""
+*/
+type BinaryBlobType uint16
+
+const (
+	BB_ANY_BLOB                 = 0x0000
+	BB_DATA_BLOB                = 0x0001
+	BB_RANDOM_BLOB              = 0x0002
+	BB_CERTIFICATE_BLOB         = 0x0003
+	BB_ERROR_BLOB               = 0x0004
+	BB_ENCRYPTED_DATA_BLOB      = 0x0009
+	BB_KEY_EXCHG_ALG_BLOB       = 0x000D
+	BB_SCOPE_BLOB               = 0x000E
+	BB_CLIENT_USER_NAME_BLOB    = 0x000F
+	BB_CLIENT_MACHINE_NAME_BLOB = 0x0010
+)
+
 type ErrorMessage struct {
 	DwErrorCode        uint32
 	DwStateTransaction uint32
@@ -70,5 +91,93 @@ func ReadLicensePacket(r io.Reader) *LicensePacket {
 	default:
 		l.LicensingMessage, _ = core.ReadBytes(int(l.WMsgSize-4), r)
 	}
+
 	return l
+}
+
+/*
+"""
+@summary: Blob use by license manager to exchange security data
+@see: http://msdn.microsoft.com/en-us/library/cc240481.aspx
+"""
+*/
+type LicenseBinaryBlob struct {
+	WBlobType uint16 `struc:"little"`
+	WBlobLen  uint16 `struc:"little"`
+	BlobData  []byte `struc:"sizefrom=WBlobLen"`
+}
+
+func NewLicenseBinaryBlob(WBlobType uint16) *LicenseBinaryBlob {
+	return &LicenseBinaryBlob{}
+}
+
+/*
+"""
+@summary: License server product information
+@see: http://msdn.microsoft.com/en-us/library/cc241915.aspx
+"""
+*/
+type ProductInformation struct {
+	DwVersion     uint32 `struc:"little"`
+	CbCompanyName uint32 `struc:"little"`
+	//may contain "Microsoft Corporation" from server microsoft
+	PbCompanyName []byte `struc:"sizefrom=CbCompanyName"`
+	CbProductId   uint32 `struc:"little"`
+	//may contain "A02" from microsoft license server
+	PbProductId []byte `struc:"sizefrom=CbProductId"`
+}
+
+/*
+@summary:  Send by server to signal license request
+
+	server -> client
+
+@see: http://msdn.microsoft.com/en-us/library/cc241914.aspx
+*/
+type ServerLicenseRequest struct {
+	ServerRandom      []byte             `struc:"[32]byte"`
+	ProductInfo       ProductInformation `struc:"little"`
+	KeyExchangeList   LicenseBinaryBlob  `struc:"little"`
+	ServerCertificate LicenseBinaryBlob  `struc:"little"`
+	//ScopeList         ScopeList
+}
+
+/*
+@summary:  Send by client to ask new license for client.
+            RDPY doesn'support license reuse, need it in futur version
+@see: http://msdn.microsoft.com/en-us/library/cc241918.aspx
+ 	#RSA and must be only RSA
+    #pure microsoft client ;-)
+    #http://msdn.microsoft.com/en-us/library/1040af38-c733-4fb3-acd1-8db8cc979eda#id10
+*/
+
+type ClientNewLicenseRequest struct {
+	PreferredKeyExchangeAlg  uint32            `struc:"little"`
+	PlatformId               uint32            `struc:"little"`
+	ClientRandom             []byte            `struc:"little"`
+	EncryptedPreMasterSecret LicenseBinaryBlob `struc:"little"`
+	ClientUserName           LicenseBinaryBlob `struc:"little"`
+	ClientMachineName        LicenseBinaryBlob `struc:"little"`
+}
+
+/*
+@summary: challenge send from server to client
+@see: http://msdn.microsoft.com/en-us/library/cc241921.aspx
+*/
+type ServerPlatformChallenge struct {
+	ConnectFlags               uint32
+	EncryptedPlatformChallenge LicenseBinaryBlob
+	MACData                    [16]byte
+}
+
+/*
+"""
+@summary: client challenge response
+@see: http://msdn.microsoft.com/en-us/library/cc241922.aspx
+"""
+*/
+type ClientPLatformChallengeResponse struct {
+	EncryptedPlatformChallengeResponse LicenseBinaryBlob
+	EncryptedHWID                      LicenseBinaryBlob
+	MACData                            []byte //[16]byte
 }
