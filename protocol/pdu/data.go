@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/icodeface/grdp/core"
-	"github.com/icodeface/grdp/glog"
-	"github.com/lunixbochs/struc"
 	"io"
+
+	"github.com/lunixbochs/struc"
+
+	"github.com/cjey/grdp/core"
+	"github.com/cjey/grdp/glog"
 )
 
 const (

@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/icodeface/grdp/core"
-	"github.com/icodeface/grdp/emission"
-	"github.com/icodeface/grdp/glog"
-	"github.com/icodeface/grdp/protocol/tpkt"
+
 	"github.com/lunixbochs/struc"
+
+	"github.com/cjey/grdp/core"
+	"github.com/cjey/grdp/emission"
+	"github.com/cjey/grdp/glog"
+	"github.com/cjey/grdp/protocol/tpkt"
 )
 
 // take idea from https://github.com/Madnikulin50/gordp

@@ -2,10 +2,12 @@ package gcc
 
 import (
 	"bytes"
-	"github.com/icodeface/grdp/core"
-	"github.com/icodeface/grdp/glog"
-	"github.com/icodeface/grdp/protocol/t125/per"
+
 	"github.com/lunixbochs/struc"
+
+	"github.com/cjey/grdp/core"
+	"github.com/cjey/grdp/glog"
+	"github.com/cjey/grdp/protocol/t125/per"
 )
 
 var t124_02_98_oid = []byte{0, 0, 20, 124, 0, 1}

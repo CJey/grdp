@@ -3,9 +3,10 @@ package tpkt
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/icodeface/grdp/core"
-	"github.com/icodeface/grdp/emission"
-	"github.com/icodeface/grdp/glog"
+
+	"github.com/cjey/grdp/core"
+	"github.com/cjey/grdp/emission"
+	"github.com/cjey/grdp/glog"
 )
 
 // take idea from https://github.com/Madnikulin50/gordp

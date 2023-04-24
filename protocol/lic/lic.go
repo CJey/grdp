@@ -1,8 +1,9 @@
 package lic
 
 import (
-	"github.com/icodeface/grdp/core"
 	"io"
+
+	"github.com/cjey/grdp/core"
 )
 
 const (

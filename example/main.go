@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/icodeface/grdp"
-	"github.com/icodeface/grdp/glog"
+
+	"github.com/cjey/grdp"
+	"github.com/cjey/grdp/glog"
 )
 
 func main() {

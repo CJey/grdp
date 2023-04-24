@@ -3,8 +3,9 @@ package core
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/icodeface/grdp/glog"
 	"io"
+
+	"github.com/cjey/grdp/glog"
 )
 
 type ReadBytesComplete func(result []byte, err error)

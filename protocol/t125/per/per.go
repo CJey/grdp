@@ -2,8 +2,9 @@ package per
 
 import (
 	"bytes"
-	"github.com/icodeface/grdp/core"
 	"io"
+
+	"github.com/cjey/grdp/core"
 )
 
 func ReadEnumerates(r io.Reader) (uint8, error) {

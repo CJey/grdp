@@ -3,10 +3,12 @@ package core
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/icodeface/grdp/glog"
-	"github.com/icodeface/grdp/protocol/nla"
-	"github.com/icodeface/tls"
 	"net"
+
+	"github.com/icodeface/tls"
+
+	"github.com/cjey/grdp/glog"
+	"github.com/cjey/grdp/protocol/nla"
 )
 
 type SocketLayer struct {

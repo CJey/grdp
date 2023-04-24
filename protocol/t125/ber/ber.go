@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/icodeface/grdp/core"
+	"github.com/cjey/grdp/core"
 )
 
 const (

@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/icodeface/grdp/core"
-	"github.com/icodeface/grdp/glog"
-	"github.com/icodeface/grdp/protocol/t125/gcc"
-	"github.com/lunixbochs/struc"
 	"io"
+
+	"github.com/lunixbochs/struc"
+
+	"github.com/cjey/grdp/core"
+	"github.com/cjey/grdp/glog"
+	"github.com/cjey/grdp/protocol/t125/gcc"
 )
 
 type CapsType uint16

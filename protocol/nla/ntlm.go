@@ -3,9 +3,11 @@ package nla
 import (
 	"bytes"
 	"crypto/rand"
-	"github.com/icodeface/grdp/glog"
-	"github.com/lunixbochs/struc"
 	"os"
+
+	"github.com/lunixbochs/struc"
+
+	"github.com/cjey/grdp/glog"
 )
 
 const (

@@ -3,20 +3,21 @@ package grdp
 import (
 	"errors"
 	"fmt"
-	"github.com/icodeface/grdp/core"
-	"github.com/icodeface/grdp/glog"
-	"github.com/icodeface/grdp/protocol/nla"
-	"github.com/icodeface/grdp/protocol/pdu"
-	"github.com/icodeface/grdp/protocol/sec"
-	"github.com/icodeface/grdp/protocol/t125"
-	"github.com/icodeface/grdp/protocol/tpkt"
-	"github.com/icodeface/grdp/protocol/x224"
 	"log"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cjey/grdp/core"
+	"github.com/cjey/grdp/glog"
+	"github.com/cjey/grdp/protocol/nla"
+	"github.com/cjey/grdp/protocol/pdu"
+	"github.com/cjey/grdp/protocol/sec"
+	"github.com/cjey/grdp/protocol/t125"
+	"github.com/cjey/grdp/protocol/tpkt"
+	"github.com/cjey/grdp/protocol/x224"
 )
 
 type Client struct {

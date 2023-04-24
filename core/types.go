@@ -1,6 +1,8 @@
 package core
 
-import "github.com/icodeface/grdp/emission"
+import (
+	"github.com/cjey/grdp/emission"
+)
 
 type Transport interface {
 	Read(b []byte) (n int, err error)

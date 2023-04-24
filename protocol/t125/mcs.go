@@ -5,13 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/icodeface/grdp/core"
-	"github.com/icodeface/grdp/emission"
-	"github.com/icodeface/grdp/glog"
-	"github.com/icodeface/grdp/protocol/t125/ber"
-	"github.com/icodeface/grdp/protocol/t125/gcc"
-	"github.com/icodeface/grdp/protocol/t125/per"
 	"io"
+
+	"github.com/cjey/grdp/core"
+	"github.com/cjey/grdp/emission"
+	"github.com/cjey/grdp/glog"
+	"github.com/cjey/grdp/protocol/t125/ber"
+	"github.com/cjey/grdp/protocol/t125/gcc"
+	"github.com/cjey/grdp/protocol/t125/per"
 )
 
 // take idea from https://github.com/Madnikulin50/gordp
