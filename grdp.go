@@ -1,7 +1,6 @@
 package grdp
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -27,6 +26,7 @@ func init() {
 
 type Client struct {
 	Host string // ip:port
+	conn net.Conn
 	tpkt *tpkt.TPKT
 	x224 *x224.X224
 	mcs  *t125.MCSClient
@@ -40,6 +40,15 @@ type Client struct {
 func NewClient(host string) *Client {
 	return &Client{
 		Host:   host,
+		width:  1024,
+		height: 768,
+	}
+}
+
+func NewClientConn(conn net.Conn) *Client {
+	return &Client{
+		Host:   conn.RemoteAddr().String(),
+		conn:   conn,
 		width:  1024,
 		height: 768,
 	}
@@ -61,14 +70,17 @@ func split(user string) (domain string, uname string) {
 }
 
 func (g *Client) Login(user, pwd string) error {
-	conn, err := net.DialTimeout("tcp", g.Host, 3*time.Second)
-	if err != nil {
-		return errors.New(fmt.Sprintf("[dial err] %v", err))
+	if g.conn == nil {
+		if conn, err := net.DialTimeout("tcp", g.Host, 3*time.Second); err != nil {
+			return fmt.Errorf("[dial err] %w", err)
+		} else {
+			g.conn = conn
+		}
 	}
 
 	domain, user := split(user)
 
-	g.tpkt = tpkt.New(core.NewSocketLayer(conn), nla.NewNTLMv2(domain, user, pwd))
+	g.tpkt = tpkt.New(core.NewSocketLayer(g.conn), nla.NewNTLMv2(domain, user, pwd))
 	g.x224 = x224.New(g.tpkt)
 	g.mcs = t125.NewMCSClient(g.x224)
 	g.sec = sec.NewClient(g.mcs)
@@ -85,9 +97,8 @@ func (g *Client) Login(user, pwd string) error {
 
 	g.x224.SetRequestedProtocol(x224.PROTOCOL_SSL | x224.PROTOCOL_HYBRID)
 
-	err = g.x224.Connect()
-	if err != nil {
-		return errors.New(fmt.Sprintf("[x224 connect err] %v", err))
+	if err := g.x224.Connect(); err != nil {
+		return fmt.Errorf("[x224 connect err] %w", err)
 	}
 	return nil
 }
